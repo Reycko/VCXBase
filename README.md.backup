@@ -1,6 +1,6 @@
 # VCXBase
 
-A simple base for VCX projects, including GitHub workflows, and settings for modern C++ programming.
+Simple base for VCX projects, including GitHub workflows, git support (conventional commits), and settings to quickly get started with modern C++ programming.
 
 Made for myself.
 

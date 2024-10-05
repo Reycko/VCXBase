@@ -32,10 +32,8 @@ jobs:
   build:
     strategy:
       matrix:
-        #arch: [x64, Win32]
-        #configuration: [Debug, RelWithDebInfo, Release]
-        arch: [x64]
-        configuration: [Release]
+        arch: [x64, Win32]
+        configuration: [Debug, RelWithDebInfo, Release]
     needs: [init]
     runs-on: windows-latest
     if: ${{ needs.init.outputs.should_run == 'true' }}

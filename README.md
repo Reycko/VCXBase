@@ -19,7 +19,7 @@ It should work fine.
 ### Method 2 (better?)  
 You can also create a new solution.  
 Copy .github, .gitignore, .gitattributes and Directory.Build.props.  
-Get the `GetGitInfo` target from the .vcxproj and use it.  
+Get the `GetGitInfo` target from the .vcxproj and put it on your project.  
 That should work.
 
 ## Post-install setup

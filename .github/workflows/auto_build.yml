@@ -1,0 +1,126 @@
+name: Bleeding Edge + Nightly Builds
+
+on:
+  push:
+    branches: [ develop, master ]
+
+jobs:
+  build-develop:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64]
+        configuration: [Debug]
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        run: msbuild /m /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.arch }} .
+
+      - name: ZIP Release
+        run: |
+          7z a -tzip ${{ github.event.repository.name }}-bleedingedge-${{ matrix.configuration }}_${{ matrix.arch }}.zip ./bin/${{ matrix.arch }}/${{ matrix.configuration }}/*
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: '${{ github.event.repository.name }}-bleedingedge-${{ matrix.configuration }}_${{ matrix.arch }}'
+          path: '${{ github.event.repository.name }}-bleedingedge-${{ matrix.configuration }}_${{ matrix.arch }}.zip'
+  
+  build:
+    strategy:
+      matrix:
+        arch: [x64, Win32]
+        configuration: [RelWithDebInfo]
+    runs-on: windows-latest
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        run: msbuild /m /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.arch }} .
+      
+      - name: ZIP Release
+        run: |
+          7z a -tzip ${{ github.event.repository.name }}-nightly-${{ matrix.configuration }}_${{ matrix.arch }}.zip ./bin/${{ matrix.arch }}/${{ matrix.configuration }}/*
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: '${{ github.event.repository.name }}-nightly-${{ matrix.configuration }}_${{ matrix.arch }}.zip'
+          path: '${{ github.event.repository.name }}-nightly-${{ matrix.configuration }}_${{ matrix.arch }}.zip'
+
+  upload-develop:
+    needs: [build-develop]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+
+    steps:
+      - name: Download artifact(s)
+        uses: actions/download-artifact/@v4
+
+      - name: Delete older bleeding edge build
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          delete_release: true
+          tag_name: bleeding-edge-auto
+          github_token: ${{ secrets.TOKEN }}
+
+      - name: Publish bleeding edge build
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Bleeding Edge (develop)
+          tag_name: bleeding-edge-auto
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            */*
+          body: |
+            Automatic bleeding edge release from `develop` branch. Most likely unstable. You might be looking for [nightly-auto](https://github.com/${{ github.repository }}/releases/tag/nightly-auto).
+            Commit ID: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+
+  upload:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact/@v4
+
+      - name: Delete older nightly build
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          delete_release: true
+          tag_name: nightly-auto
+          repo: ${{ github.repository }}
+          github_token: ${{ secrets.TOKEN }}
+
+      - name: Publish nightly build
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Nightly
+          tag_name: nightly-auto
+          prerelease: true
+          fail_on_unmatched_files: true
+          files: |
+            */*
+          body: |
+            Automatic nightly release from `master` branch.
+            Commit ID: ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
+
+
+

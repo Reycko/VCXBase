@@ -1,0 +1,101 @@
+name: New version on bump
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  #SECTION - Init
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check_version.outputs.should_run }}
+      ver: ${{ steps.check_version.outputs.ver }}
+    steps:
+      - name: Check for version bump
+        id: check_version
+        run: |
+          message="${{ github.event.head_commit.message }}"
+
+          if [[ "$message" =~ '^(BREAKING\ CHANGE|feat|fix):.*bump\ version\ to\ ([0-9]+)\.([0-9]+)\.([0-9]+)$') ]]; then
+            echo "Found version bump: ${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "ver=${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}" >> $GITHUB_OUTPUT
+          else
+            echo "No version bump on this commit."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "ver=0.0.0" >> $GITHUB_OUTPUT
+          fi
+  #!SECTION
+
+  #SECTION - Build
+  build:
+    strategy:
+      matrix:
+        #arch: [x64, Win32]
+        #configuration: [Debug, RelWithDebInfo, Release]
+        arch: [x64]
+        configuration: [Release]
+    needs: [init]
+    runs-on: windows-latest
+    if: ${{ needs.init.outputs.should_run == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build
+        run: |
+          msbuild /m /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.arch }} .
+      
+      - name: ZIP Release
+        run: |
+          7z a -tzip ${{ github.event.repository.name }}-${{ matrix.configuration }}_${{ matrix.arch }}.zip ./bin/${{ matrix.arch }}/${{ matrix.configuration }}/*
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: '${{ github.event.repository.name }}-${{ matrix.configuration }}_${{ matrix.arch }}'
+          path: '${{ github.event.repository.name }}-${{ matrix.configuration }}_${{ matrix.arch }}.zip'
+  #!SECTION
+
+  #SECTION - Publish
+  publish:
+    needs: [init, build]
+    runs-on: ubuntu-latest
+    if: ${{ needs.init.outputs.should_run == 'true' }}
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+
+      - name: Get git data
+        run: |
+          git init
+          git remote add origin https://${{ secrets.TOKEN }}@github.com/${{ github.repository }}
+          git fetch --depth=1 --tags origin ${{ github.sha }}
+
+      - name: Get last tag
+        id: tag
+        run: |
+          last_tag=$(git tag --sort=-creatordate | grep -v 'nightly-auto' | grep -v 'bleeding-edge-auto' | head -n 1)
+          if [ "$last_tag" != "" ]; then
+            echo "changelog=https://github.com/${{ github.repository }}/compare/${last_tag}...${{ needs.init.outputs.ver }}" >> $GITHUB_OUTPUT
+          else
+            echo "changelog=(No changelog available)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.init.outputs.ver }}
+          prerelease: false
+          fail_on_unmatched_files: true
+          token: ${{ secrets.TOKEN }}
+          files: |
+            */*
+          body: |
+            Release: ${{ needs.init.outputs.ver }} (${{ github.sha }})
+            Changelog: ${{ steps.tag.outputs.changelog }}
+  #!SECTION

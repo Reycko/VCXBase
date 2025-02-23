@@ -402,3 +402,4 @@ FodyWeavers.xsd
 git_commit.txt
 git_short_commit.txt
 RelWithDebInfo/
+setup.py

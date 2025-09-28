@@ -9,7 +9,7 @@ Made for myself.
 > If your commit ends with `[skip ci]`, none of these will run.
 - `master` branch has automatic 'nightly' builds created on each commit/PR
 - `develop` branch has automatic 'develop' builds created on each commit/PR
-- If following the [conventional commits spec](https://www.conventionalcommits.org) and [semantic versionning spec](https://semver.org/), making a commit with `version: <semantic version>`, it'll automatically publish you a release.
+- If following the [conventional commits spec](https://www.conventionalcommits.org) and [semantic versionning spec](https://semver.org/), making a commit with `<BREAKING CHANCE|feat|fix>: bump version to <semantic version>`, it'll automatically publish you a release.
 
 ## Installation  
 

@@ -19,7 +19,7 @@ jobs:
 
           if [[ "$message" =~ '^(version):\s*([0-9]+)\.([0-9]+)\.([0-9]+)$') ]]; then
             echo "Found version bump: ${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}"
-            echo "should_run=false" >> $GITHUB_OUTPUT
+            echo "should_run=true" >> $GITHUB_OUTPUT
             echo "ver=${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.${BASH_REMATCH[4]}" >> $GITHUB_OUTPUT
           else
             echo "No version bump on this commit."
